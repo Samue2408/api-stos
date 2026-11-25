@@ -11,5 +11,6 @@ export const PlatformModule = defineModule({
     { code: 'plans:read',              type: 'action', name: 'Ver planes' },
     { code: 'plans:manage',            type: 'action', name: 'Gestionar planes y sus módulos' },
     { code: 'platform-admins:manage',  type: 'action', name: 'Gestionar administradores de plataforma' },
+    { code: 'audit:read',              type: 'action', name: 'Ver registro de auditoría' },
   ],
 });

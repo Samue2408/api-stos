@@ -13,13 +13,14 @@ import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
 import { AccessGuard } from './modules/access-control/access.guard';
 import { UsersModule } from './modules/users/users.module';
 import { DemoController } from './demo/demo.controller';
+import { AuditModule } from './modules/audit/audit.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     TypeOrmModule.forRoot({ ...dataSourceOptions, autoLoadEntities: true }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
-    AccessControlModule, UsersModule, TenantsModule, PlansModule, AuthModule,
+    AccessControlModule, UsersModule, TenantsModule, PlansModule, AuthModule, AuditModule,
   ],
   controllers: [DemoController], // temporal: bórralo cuando haya módulos reales
   providers: [
