@@ -16,6 +16,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(p: JwtPayload): AuthUser {
-    return { userId: p.sub, ctx: p.ctx, tenantId: p.tid ?? null, sessionId: p.sid };
+    return {
+      userId: p.sub,
+      ctx: p.ctx,
+      tenantId: p.tid ?? null,
+      sessionId: p.sid,
+      mustChangePassword: p.mcp === true,
+    };
   }
 }

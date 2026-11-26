@@ -1,7 +1,7 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { AuthUser } from '../../common/auth/auth-user';
-import { AuthOnly, CurrentUser, Public } from '../../common/auth/decorators';
+import { AllowPendingPasswordChange, AuthOnly, CurrentUser, Public } from '../../common/auth/decorators';
 import { AuthService } from './auth.service';
 import { LoginDto, RefreshDto, SelectContextDto } from './dto';
 
@@ -33,6 +33,7 @@ export class AuthController {
   }
 
   @AuthOnly()
+  @AllowPendingPasswordChange() 
   @HttpCode(204)
   @Post('logout')
   async logout(@CurrentUser() user: AuthUser) {

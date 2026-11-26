@@ -5,6 +5,7 @@ export interface AuthUser {
   ctx: SessionContext;
   tenantId: string | null;
   sessionId: string;
+  mustChangePassword: boolean;
 }
 
 export interface JwtPayload {
@@ -12,4 +13,5 @@ export interface JwtPayload {
   ctx: SessionContext;
   tid?: string;
   sid: string;
+  mcp?: boolean; 
 }

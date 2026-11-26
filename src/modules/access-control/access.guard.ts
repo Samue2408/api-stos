@@ -1,9 +1,13 @@
 import {
-  CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthUser } from '../../common/auth/auth-user';
-import { AUTH_ONLY, IS_PUBLIC } from '../../common/auth/decorators';
+import { ALLOW_PENDING_PASSWORD_CHANGE, AUTH_ONLY, IS_PUBLIC } from '../../common/auth/decorators';
 import { AccessService } from './access.service';
 import { MODULES_KEY, PERMISSIONS_KEY } from './decorators';
 
@@ -16,13 +20,24 @@ export class AccessGuard implements CanActivate {
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const targets = [ctx.getHandler(), ctx.getClass()];
-    const get = <T>(key: string) => this.reflector.getAllAndOverride<T | undefined>(key, targets);
+    const get = <T>(key: string) =>
+      this.reflector.getAllAndOverride<T | undefined>(key, targets);
 
     if (get<boolean>(IS_PUBLIC)) return true;
 
     const req = ctx.switchToHttp().getRequest();
     const user: AuthUser | undefined = req.user;
     if (!user) throw new UnauthorizedException();
+
+    if (
+      user.mustChangePassword &&
+      !get<boolean>(ALLOW_PENDING_PASSWORD_CHANGE)
+    ) {
+      throw new ForbiddenException({
+        message: 'Debes cambiar tu contraseña',
+        code: 'PASSWORD_CHANGE_REQUIRED',
+      });
+    }
 
     const permissions = get<string[]>(PERMISSIONS_KEY);
     const modules = get<string[]>(MODULES_KEY);
@@ -33,15 +48,20 @@ export class AccessGuard implements CanActivate {
       throw new ForbiddenException('Endpoint sin política de acceso');
     }
 
-    if (user.ctx === 'none') throw new ForbiddenException('Debes seleccionar un contexto');
+    if (user.ctx === 'none')
+      throw new ForbiddenException('Debes seleccionar un contexto');
 
     const access = await this.access.getAccess(user);
-    if (!access) throw new ForbiddenException('Sin acceso vigente en este contexto');
+    if (!access)
+      throw new ForbiddenException('Sin acceso vigente en este contexto');
 
     if (modules?.length && !modules.some((m) => access.modules.includes(m))) {
       throw new ForbiddenException('Módulo no incluido en el plan');
     }
-    if (permissions?.length && !permissions.every((p) => access.permissions.includes(p))) {
+    if (
+      permissions?.length &&
+      !permissions.every((p) => access.permissions.includes(p))
+    ) {
       throw new ForbiddenException('Permisos insuficientes');
     }
 

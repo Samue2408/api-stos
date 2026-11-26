@@ -6,7 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes } from 'crypto';
 import * as argon2 from 'argon2';
-import { IsNull, Repository } from 'typeorm';
+import { EntityManager, IsNull, Repository } from 'typeorm';
 import { AuthUser, JwtPayload, SessionContext } from '../../common/auth/auth-user';
 import { UsersService } from '../users/users.service';
 import { TenantsService } from '../tenants/tenants.service';
@@ -47,12 +47,13 @@ export class AuthService implements OnModuleInit {
     if (!contexts.length) throw new ForbiddenException('El usuario no tiene accesos activos');
 
     // Un solo contexto: se selecciona solo. Varios: el cliente debe llamar a select-context
+    const mcp = user.mustChangePassword;
     const active = contexts.length === 1 ? contexts[0] : null;
     const tokens = active
-      ? await this.issueSession(user.id, active.type, active.type === 'tenant' ? active.tenantId : null)
-      : await this.issueSession(user.id, 'none', null);
+      ? await this.issueSession(user.id, active.type, active.type === 'tenant' ? active.tenantId : null, mcp)
+      : await this.issueSession(user.id, 'none', null, mcp);
 
-    return { ...tokens, mustChangePassword: user.mustChangePassword, contexts, active };
+    return { ...tokens, mustChangePassword: mcp, contexts, active };
   }
 
   async selectContext(user: AuthUser, dto: SelectContextDto) {
@@ -64,7 +65,7 @@ export class AuthService implements OnModuleInit {
 
     await this.revokeSession(user.sessionId);
     const tenantId = dto.type === 'tenant' ? dto.tenantId! : null;
-    return this.issueSession(user.userId, dto.type, tenantId);
+    return this.issueSession(user.userId, dto.type, tenantId, user.mustChangePassword);
   }
 
   async refresh(rawToken: string) {
@@ -89,7 +90,7 @@ export class AuthService implements OnModuleInit {
       throw new UnauthorizedException();
     }
 
-    return this.issueSession(user.id, row.context, row.tenantId);
+    return this.issueSession(user.id, row.context, row.tenantId, user.mustChangePassword);
   }
 
   async logout(sessionId: string) {
@@ -113,21 +114,29 @@ export class AuthService implements OnModuleInit {
     return this.sessions.update({ id, revokedAt: IsNull() }, { revokedAt: new Date() });
   }
 
-  private async issueSession(userId: string, context: SessionContext, tenantId: string | null) {
+  /** Cierra todas las sesiones del usuario (cambio o reseteo de contraseña). */
+  async revokeAllSessions(userId: string, tx?: EntityManager) {
+    const repo = tx ? tx.getRepository(RefreshTokenEntity) : this.sessions;
+    await repo.update({ userId, revokedAt: IsNull() }, { revokedAt: new Date() });
+  }
+
+
+  async issueSession(userId: string, context: SessionContext, tenantId: string | null, mustChangePassword: boolean) {
     const raw = randomBytes(48).toString('base64url');
     const days = this.config.getOrThrow<number>('REFRESH_TTL_DAYS');
 
     const session = await this.sessions.save(
       this.sessions.create({
-        userId,
-        tenantId,
-        context,
+        userId, tenantId, context,
         tokenHash: sha256(raw),
         expiresAt: new Date(Date.now() + days * 86_400_000),
       }),
     );
 
-    const payload: JwtPayload = { sub: userId, ctx: context, tid: tenantId ?? undefined, sid: session.id };
+    const payload: JwtPayload = {
+      sub: userId, ctx: context, tid: tenantId ?? undefined, sid: session.id,
+      mcp: mustChangePassword || undefined,
+    };
     return { accessToken: await this.jwt.signAsync(payload), refreshToken: raw };
   }
 }

@@ -9,6 +9,11 @@ import { RefreshTokenEntity } from './entities/refresh-token.entity';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
+import { PasswordController } from './password.controller';
+import { MailModule } from '../mail/mail.module';
+import { AuditModule } from '../audit/audit.module';
+import { PasswordService } from './password.service';
+import { CleanupService } from './cleanup.service';
 
 @Module({
   imports: [
@@ -26,8 +31,10 @@ import { JwtStrategy } from './jwt.strategy';
     TypeOrmModule.forFeature([RefreshTokenEntity]),
     UsersModule,
     TenantsModule,
+    MailModule,
+    AuditModule
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  controllers: [AuthController, PasswordController],
+  providers: [AuthService, JwtStrategy, PasswordService, CleanupService],
 })
 export class AuthModule {}

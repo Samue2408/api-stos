@@ -14,6 +14,7 @@ import { AccessGuard } from './modules/access-control/access.guard';
 import { UsersModule } from './modules/users/users.module';
 import { DemoController } from './demo/demo.controller';
 import { AuditModule } from './modules/audit/audit.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AuditModule } from './modules/audit/audit.module';
     TypeOrmModule.forRoot({ ...dataSourceOptions, autoLoadEntities: true }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     AccessControlModule, UsersModule, TenantsModule, PlansModule, AuthModule, AuditModule,
+    ScheduleModule.forRoot()
   ],
   controllers: [DemoController], // temporal: bórralo cuando haya módulos reales
   providers: [

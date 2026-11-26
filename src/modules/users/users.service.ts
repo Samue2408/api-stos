@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
 import { PlatformAdminEntity } from './entities/platform-admin.entity';
 
@@ -21,5 +21,10 @@ export class UsersService {
 
   async isPlatformAdmin(userId: string): Promise<boolean> {
     return (await this.admins.count({ where: { userId } })) > 0;
+  }
+
+  async setPassword(userId: string, passwordHash: string, tx?: EntityManager) {
+    const repo = tx ? tx.getRepository(UserEntity) : this.users;
+    await repo.update({ id: userId }, { passwordHash, mustChangePassword: false });
   }
 }
